@@ -1,10 +1,13 @@
 from flask import Flask, jsonify
+from flask_cors import CORS
 from config import Config
 from models import db, Ventas
 from sqlalchemy import func
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
+CORS(app)  # Habilita CORS para todas las rutas
+
 app.config.from_object(Config)
 db.init_app(app)
 
