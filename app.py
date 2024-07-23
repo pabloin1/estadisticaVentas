@@ -26,13 +26,30 @@ def get_sales_probability():
     # Get sales grouped by day
     sales_by_day = db.session.query(
         func.dayofweek(Ventas.createdAt).label('day_of_week'),
-        func.count(Ventas.id).label('sales_count')
+        func.sum(Ventas.precio_Fn).label('total_sales')
     ).filter(Ventas.createdAt >= two_weeks_ago).group_by('day_of_week').all()
 
-    total_sales = sum([sales.sales_count for sales in sales_by_day])
-    probabilities = {sales.day_of_week: sales.sales_count / total_sales for sales in sales_by_day}
+    # Initialize probabilities for all days of the week
+    probabilities = {i: 0 for i in range(1, 8)}
+
+    # Add weight to Monday (which is day 2 in DAYOFWEEK)
+    weight_factor = 2  # Adjust this factor to increase or decrease the effect on Monday
+    total_sales = sum([sales.total_sales for sales in sales_by_day])
+    
+    if total_sales > 0:
+        # Populate probabilities with actual sales data
+        for sales in sales_by_day:
+            if sales.day_of_week == 2:  # Monday
+                probabilities[sales.day_of_week] = (sales.total_sales * weight_factor) / total_sales
+            else:
+                probabilities[sales.day_of_week] = sales.total_sales / total_sales
+
+        # Normalize the probabilities to ensure they sum up to 1
+        total_probability = sum(probabilities.values())
+        probabilities = {day: prob / total_probability for day, prob in probabilities.items()}
 
     return jsonify({"sales_probabilities": probabilities})
+
 
 if __name__ == '__main__':
     app.run(debug=True)
